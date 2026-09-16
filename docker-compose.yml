@@ -1,0 +1,60 @@
+# Orquestração local: PostgreSQL + backend (devconnect) + frontend (devconnect-frontend).
+#
+# devconnect/Dockerfile foi criado a pedido explícito do Gabriel (aprovação da Regra 4 do
+# ROADMAP do frontend — não mexer no backend sem aviso prévio). Build multi-stage: roda
+# "npx prisma generate" dentro da imagem porque generated/prisma é git-ignored.
+#
+# Uso:
+#   docker compose up --build
+# Backend em http://localhost:3000 (Swagger em /docs), frontend em http://localhost:4300.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: devconnect
+    ports:
+      - '5432:5432'
+    volumes:
+      - devconnect_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./devconnect
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/devconnect?schema=public
+      APIKEY: minha-api-key
+      JWT_SECRET: uma-chave-bem-longa-e-segura
+      JWT_EXPIRES_IN: 1h
+      JWT_REFRESH_SECRET: outra-chave-bem-longa-e-segura
+      JWT_REFRESH_EXPIRES_IN: 7d
+      PORT: 3000
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./devconnect-frontend
+    ports:
+      - '4300:80'
+    depends_on:
+      - backend
+
+volumes:
+  devconnect_pgdata:
+
+networks:
+  default:
+    name: observability_net
+    external: true
