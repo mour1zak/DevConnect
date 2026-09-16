@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ReactionType {
+  LIKE
+  DISLIKE
+}
+
+enum RoleName {
+  USER 
+  MODERATOR
+  ADMIN 
+}
+
+model User {
+  id            Int            @id     @default(autoincrement())
+  name          String
+  email         String         @unique
+  password      String
+  bio           String?
+  Avatar        String?
+
+  role           RoleName          @default(USER)
+  roleId         Int? // nullable - pode ser NULL
+  roleRef        Role? @relation(fields: [roleId], references: [id])
+
+  posts         Post[]
+  comments      Comment[]
+  reactions     Reaction[]
+  createdAt     DateTime       @default(now())
+ 
+}
+
+model Post {
+  id            Int            @id  @default(autoincrement())
+  text          String
+  userId        Int //isso aqui e uma FK = chave estrangeira é uma coluna aponta para outra tabela
+  user          User           @relation(fields: [userId], references: [id])
+  comments      Comment[]
+  reactions     Reaction[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Comment {
+  id            Int           @id  @default(autoincrement())
+  text          String
+  userId        Int
+  user          User          @relation(fields: [userId], references: [id])
+  postId        Int
+  post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+}
+
+model Reaction {
+  id            Int           @id @default(autoincrement())
+  type          ReactionType
+  userId        Int
+  user          User          @relation(fields: [userId], references: [id])
+  postId        Int
+  post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@unique([userId, postId])
+}
+
+model Role {
+  id                  Int          @id    @default(autoincrement())
+  name                String       @unique
+  description         String?    
+
+  users               User[]
+  permissions         RolePermission[]
+
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+model Permission {
+  id                  Int          @id @default(autoincrement())
+  code                String       @unique
+  description         String?  
+
+  roles RolePermission[]
+
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt       
+}
+
+
+model RolePermission {
+  roleId              Int
+  permissionId        Int
+
+  role      Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  
+}

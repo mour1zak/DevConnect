@@ -1,0 +1,11 @@
+node_modules
+dist
+generated
+uploads
+.env
+.env.example
+.git
+*.log
+.claude
+.windsurf
+.agents
